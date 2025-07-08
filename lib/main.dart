@@ -1,4 +1,4 @@
-import 'package:diskovery/services/disk_scanner.dart';
+import 'package:diskovery/ui/home_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -15,12 +15,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: ElevatedButton(
-        onPressed: () async {
-          final folderInfo = await DiskScanner().getFolderInfo('C:/Dev');
-          print('Path: ${folderInfo.path}, Size: ${folderInfo.totalSize}');
-        },
-        child: Text("Analyse")),
+      home: HomeScreen()
     );
   }
 }
