@@ -1,53 +1,93 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 
-import 'package:diskovery/models/folder_info.dart';
-
-typedef ProgressCallback = void Function({
-  required String currentPath,
-  required int processedFiles,
-  required int totalFiles,
-  required int totalSize,
-});
+import 'package:diskovery/models/folder_node.dart';
+import 'package:diskovery/models/folder_scan_progress.dart';
 
 class DiskScanner {
-  Future<FolderInfo> getFolderInfo(
-    String folderPath, 
-    ProgressCallback? onProgress
+  Future<FolderNode> scanFolderIsolate(
+    String folderPath,
+    void Function(FolderScanProgress) onProgress
   ) async {
-    var dir = Directory(folderPath);
-    bool isFolderExist = await dir.exists();
-    if (!isFolderExist) {
-      throw Exception("Folder doesn't exist");
-    }
+    final receivePort = ReceivePort();
+    final completer = Completer<FolderNode>();
 
-    final stopwatch = Stopwatch()..start();
+    await Isolate.spawn(
+      _scanFolder, 
+      [folderPath, receivePort.sendPort]
+    );
 
-    final allFiles = await dir
+    late StreamSubscription sub;
+    sub = receivePort.listen((message) {
+      if (message is FolderScanProgress) {
+        onProgress(message);
+      } else if (message is FolderNode) {
+        completer.complete(message);
+        sub.cancel();
+        receivePort.close();
+      }
+    });
+
+    return completer.future;
+  }
+
+  static Future _scanFolder(List<dynamic> args) async {
+    final String folderPath = args[0];
+    final SendPort sendPort = args[1];
+
+    final dir = Directory(folderPath);
+    final List<FileSystemEntity> allEntities = await dir
       .list(recursive: true, followLinks: false)
-      .where((entity) => entity is File)
       .toList();
-    final totalFiles = allFiles.length;
+    final files = allEntities.whereType<File>().toList();
+    final totalFiles = files.length;
 
+    int processed = 0;
     int totalSize = 0;
-    int processedFiles = 0;
 
-    for (final entity in allFiles) {
-      if (entity is File) {
-        totalSize += await entity.length();
-        processedFiles++;
-        if (onProgress != null) {
-          onProgress(
-            currentPath: entity.path,
-            processedFiles: processedFiles,
-            totalFiles: totalFiles,
-            totalSize: totalSize,
+    Future<FolderNode> buildTree(Directory dir) async {
+      int size = 0;
+      List<FolderNode> children = [];
+      final entities = await dir.list(followLinks: false).toList();
+
+      for (final entity in entities) {
+        if (entity is File) {
+          final fileSize = await entity.length();
+          size += fileSize;
+          totalSize += fileSize;
+          processed++;
+
+          children.add(FolderNode(
+            path: entity.path,
+            size: fileSize,
+            type: ElementType.file
+          ));
+
+          sendPort.send(FolderScanProgress(
+            currentPath: entity.path, 
+            processedFiles: processed, 
+            totalFiles: totalFiles, 
+            totalSize: totalSize
+            )
           );
+        } else if (entity is Directory) {
+          final child = await buildTree(entity);
+          size += child.size ?? 0;
+          children.add(child);
         }
       }
+
+      return FolderNode(
+        path: dir.path, 
+        size: size, 
+        type: ElementType.folder,
+        children: children
+      );
     }
 
-    stopwatch.stop();
+    final result = await buildTree(dir);
 
-    return FolderInfo(path: folderPath, totalSize: totalSize, duration: stopwatch.elapsed);
+    sendPort.send(result);
   }
 }
