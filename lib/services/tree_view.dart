@@ -33,4 +33,18 @@ class TreeView {
         type: entity is Directory ? ElementType.folder : ElementType.file))
       .toList();
   }
+
+  void updateNodeWithScanResult(FolderNode scannedNode, List<FolderNode> targetNodes) {
+    for (var i = 0; i < targetNodes.length; i++) {
+      if (targetNodes[i].path == scannedNode.path) {
+        targetNodes[i].size = scannedNode.size;
+        targetNodes[i].children = scannedNode.children;
+        return;
+      }
+
+      if (targetNodes[i].children != null) {
+        updateNodeWithScanResult(scannedNode, targetNodes[i].children!);
+      }
+    }
+  }
 }

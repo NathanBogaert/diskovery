@@ -56,7 +56,7 @@ class DiskScanner {
       }
     }
 
-    countFiles(dir);
+    await countFiles(dir);
 
     Future<FolderNode> buildTree(Directory dir) async {
       int folderSize = 0;

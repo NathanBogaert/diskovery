@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _progress = (_scannedFiles / _totalFiles).clamp(0, 1);
       _percent = (_progress * 100).toInt();
       _duration = stopwatch.elapsed;
-      _rootNode = [result];
+      _treeView.updateNodeWithScanResult(result, _rootNode);
       _isScanning = false;
     });
     debugPrint("Path: ${result.path} Size: ${result.size} Duration: ${stopwatch.elapsed}");
@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   spacing: 16.0,
                   children: [
                     ButtonWidget(
-                      text: "Scan Selected Disk: ${_selectedPath!.substring(0, 2)}", 
+                      text: "Scan Selected Disk: ${_selectedPath != null ? _selectedPath!.substring(0, 2): ""}", 
                       onPressed: () => _startScan(_selectedPath!.substring(0, 2)),
                       isButtonDisabled: _isScanning,
                     ),
@@ -245,8 +245,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Expanded(
-              child: ListView(
-                children: _rootNode.map((node) => _buildFolderNode(node)).toList(),
+              child: ListView.builder(
+                itemCount: _rootNode.length,
+                itemBuilder: (context, index) => _buildFolderNode(_rootNode[index]),
               )
             ),
           ],
