@@ -43,19 +43,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _startScan() async {
+  Future<void> _startScan(String path) async {
     setState(() {
       _isScanning = true;
       _progress = 0;
-      _currentScanPath = '';
       _percent = 0;
+      _scannedFiles = 0;
+      _totalFiles = 0;
+      _currentScanPath = '';
       _duration = null;
     });
 
     final Stopwatch stopwatch = Stopwatch()..start();
 
     final result = await DiskScanner().scanFolderIsolate(
-      _selectedPath!,
+      path,
       (progress) {
         setState(() {
           _currentScanPath = progress.currentPath;
@@ -118,6 +120,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onExpansionChanged: (expanded) async {
           setState(() {
             node.isExpanded = expanded;
+            _selectedPath = node.path;
+            debugPrint(_selectedPath);
           });
 
           if (expanded && node.children == null) {
@@ -183,13 +187,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   spacing: 16.0,
                   children: [
                     ButtonWidget(
-                      text: "Start Scan", 
-                      onPressed: _startScan,
+                      text: "Scan Selected Disk: ${_selectedPath!.substring(0, 2)}", 
+                      onPressed: () => _startScan(_selectedPath!.substring(0, 2)),
                       isButtonDisabled: _isScanning,
                     ),
                     ButtonWidget(
-                      text: "Scan Selected Folder", 
-                      onPressed: _startScan,
+                      text: "Scan Selected Folder: $_selectedPath", 
+                      onPressed: () => _startScan(_selectedPath!),
                       isButtonDisabled: _isScanning,
                     ),
                   ],
