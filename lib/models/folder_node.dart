@@ -14,4 +14,11 @@ class FolderNode {
     this.size,
     required this.type,
   });
+
+  static FolderNode empty(String path) => FolderNode(
+    path: path,
+    type: ElementType.folder,
+    size: 0,
+    children: []
+  );
 }

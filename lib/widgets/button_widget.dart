@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class ButtonWidget extends StatefulWidget {
   final String text;
   final Function() onPressed;
+  final bool isButtonDisabled;
 
   const ButtonWidget({
     super.key, 
     required this.text, 
-    required this.onPressed
+    required this.onPressed,
+    required this.isButtonDisabled,
   });
 
   @override
@@ -15,19 +17,12 @@ class ButtonWidget extends StatefulWidget {
 }
 
 class _ButtonWidgetState extends State<ButtonWidget> {
-  bool isButtonDisabled = false;
   bool isHover = false;
-
-  void enableButton() {
-    setState(() {
-      isButtonDisabled = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: isButtonDisabled ? null : widget.onPressed,
+      onPressed: widget.isButtonDisabled ? null : widget.onPressed,
       style: ElevatedButton.styleFrom(
         minimumSize: Size.zero,
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),

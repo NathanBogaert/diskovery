@@ -7,6 +7,7 @@ import 'package:diskovery/widgets/button_widget.dart';
 import 'package:diskovery/widgets/dropdown_button_widget.dart';
 import 'package:diskovery/widgets/text_field_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:windows_disk_utils/disk_size_formatter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,30 +21,31 @@ class _HomeScreenState extends State<HomeScreen> {
   String _currentScanPath = '';
   int _percent = 0;
   Duration? _duration;
-  FolderNode? _rootNode;
+  List<FolderNode> _rootNode = [];
   final TreeView _treeView = TreeView();
-  final String _currentPath = r"C:\Program Files (x86)\Steam";
+  String? _selectedPath;
+  bool _isScanning = false;
+  int _totalFiles = 0;
+  int _scannedFiles = 0;
 
   @override
   void initState() {
     super.initState();
-    updateTree();
+    initTree();
   }
 
-  Future updateTree() async {
-    final children = await _treeView.getChildren(Directory(_currentPath));
+  Future initTree() async {
+    final List<FolderNode> disks = await _treeView.loadInitialTree();
+    _selectedPath = disks.first.path;
 
     setState(() {
-      _rootNode = FolderNode(
-        path: _currentPath, 
-        children: children,
-        type: ElementType.folder,
-      );
+      _rootNode = disks;
     });
   }
 
   Future<void> _startScan() async {
     setState(() {
+      _isScanning = true;
       _progress = 0;
       _currentScanPath = '';
       _percent = 0;
@@ -53,28 +55,34 @@ class _HomeScreenState extends State<HomeScreen> {
     final Stopwatch stopwatch = Stopwatch()..start();
 
     final result = await DiskScanner().scanFolderIsolate(
-      _currentPath,
+      _selectedPath!,
       (progress) {
         setState(() {
           _currentScanPath = progress.currentPath;
-          _progress = progress.totalFiles == 0 
-            ? 0 
-            : progress.processedFiles / progress.totalFiles;
+          _scannedFiles = progress.processed;
+          _totalFiles = progress.totalFiles;
+          _duration = stopwatch.elapsed;
+          _progress = (_scannedFiles / _totalFiles).clamp(0, 1);
           _percent = (_progress * 100).toInt();
         });
       },
     );
 
-    stopwatch.stop;
+    stopwatch.stop();
 
     setState(() {
-      _rootNode = result;
+      _totalFiles = _scannedFiles;
+      _progress = (_scannedFiles / _totalFiles).clamp(0, 1);
+      _percent = (_progress * 100).toInt();
       _duration = stopwatch.elapsed;
+      _rootNode = [result];
+      _isScanning = false;
     });
-    print("Path: ${result.path} Size: ${result.size} Duration: ${stopwatch.elapsed}");
+    debugPrint("Path: ${result.path} Size: ${result.size} Duration: ${stopwatch.elapsed}");
   }
 
   Widget _buildFolderNode(FolderNode node, [int depth = 0]) {
+    final nodeSize = node.size != null ? DiskSizeFormatter.formatBytes(node.size!) : "";
     if (node.type == ElementType.file) {
       return ListTile(
         key: PageStorageKey(node.path),
@@ -88,9 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(fontSize: 12),
         ),
         contentPadding: EdgeInsets.only(left: depth * 20, right: 16),
-        trailing: Text(
-          node.size != null ? " ${(node.size! / (1024 * 1024)).toStringAsFixed(2)} MB" : ""
-        ),
+        trailing: Text(nodeSize),
       );
     } else {
       return ExpansionTile(
@@ -100,9 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
           node.type == ElementType.file ? Icons.file_copy : node.isExpanded ? Icons.folder_open : Icons.folder,
           size: 20,
         ),
-        trailing: Text(
-          node.size != null ? " ${(node.size! / (1024 * 1024)).toStringAsFixed(2)} MB" : ""
-        ),
+        trailing: Text(nodeSize),
         title: Text(
           _getFolderName(node.path),
           style: TextStyle(
@@ -181,10 +185,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ButtonWidget(
                       text: "Start Scan", 
                       onPressed: _startScan,
+                      isButtonDisabled: _isScanning,
                     ),
                     ButtonWidget(
                       text: "Scan Selected Folder", 
                       onPressed: _startScan,
+                      isButtonDisabled: _isScanning,
                     ),
                   ],
                 )
@@ -204,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
               spacing: 8,
               children: [
                 Text(
-                  "Analyzing : $_currentScanPath",
+                  _progress == 0 ? "Estimating Scan Size" : "Analyzing: $_currentScanPath",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 12
@@ -218,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   minHeight: 6,
                 ),
                 Text(
-                  "$_percent% complete ${_duration != null ? "in $_duration" : ""}",
+                  "$_percent% complete (scanned $_scannedFiles${_duration != null ? " in $_duration" : ""})",
                   style: TextStyle(
                     fontWeight: FontWeight.w300,
                     color: Colors.grey[700],
@@ -234,12 +240,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 13
               ),
             ),
-            if (_rootNode != null)
-              Expanded(
-                child: ListView(
-                  children: [_buildFolderNode(_rootNode!)],
-                )
+            Expanded(
+              child: ListView(
+                children: _rootNode.map((node) => _buildFolderNode(node)).toList(),
               )
+            ),
           ],
         ),
       ),
