@@ -1,13 +1,14 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:diskovery/models/folder_node.dart';
 import 'package:diskovery/services/disk_scanner.dart';
 import 'package:diskovery/services/tree_view.dart';
+import 'package:diskovery/utils/format_bytes.dart';
 import 'package:diskovery/widgets/button_widget.dart';
 import 'package:diskovery/widgets/dropdown_button_widget.dart';
 import 'package:diskovery/widgets/text_field_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:windows_disk_utils/disk_size_formatter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _scannedFiles = 0;
   final _sortItems = ['Sort by A-Z', 'Sort by Z-A', 'Sort by Size asc', 'Sort by Size desc'];
   String _sortOption = 'Sort by A-Z';
+  final _sizeUnit = {"KB": 1024, "MB": pow(1024, 2).toInt(), "GB": pow(1024, 3).toInt(), "TB": pow(1024, 4).toInt()};
+  String _selectedSizeUnit = "GB";
+  int? _minSize;
 
   @override
   void initState() {
@@ -87,8 +91,25 @@ class _HomeScreenState extends State<HomeScreen> {
     debugPrint("Path: ${result.path} Size: ${result.size} Duration: ${stopwatch.elapsed}");
   }
 
+  bool _matchesFilter(FolderNode node) {
+    if (node.children != null) {
+      for (final child in node.children!) {
+        if (_matchesFilter(child)) return true;
+      }
+    }
+
+    final minSizeInBytes = _minSize != null ? _minSize! * (_sizeUnit[_selectedSizeUnit] ?? 1) : null;
+    final sizeMatches = minSizeInBytes == null || (node.size ?? 0) >= minSizeInBytes;
+    return sizeMatches;
+  }
+
   Widget _buildFolderNode(FolderNode node, [int depth = 0]) {
-    final nodeSize = node.size != null ? DiskSizeFormatter.formatBytes(node.size!) : "";
+    if (!_matchesFilter(node)) {
+        return const SizedBox.shrink();
+    }
+
+    final nodeSize = node.size != null ? formatBytes(node.size!) : "";
+
     if (node.type == ElementType.file) {
       return ListTile(
         key: PageStorageKey(node.path),
@@ -209,7 +230,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               ],
             ),
-            TextFieldWidget(hintText: "Search folders or files"),
+            TextFieldWidget(
+              hintText: "Add minimum size to display",
+              onChanged: (value) {
+                setState(() {
+                  _minSize = int.tryParse(value!);
+                });
+              },
+              suffixWidget: DropdownButtonWidget(
+                items: _sizeUnit.keys.toList(),
+                selectedItem: _selectedSizeUnit,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSizeUnit = value!;
+                  });
+                },
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               spacing: 8,
@@ -232,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
               spacing: 8,
               children: [
                 Text(
-                  _progress == 0 ? "Estimating Scan Size" : "Analyzing: $_currentScanPath",
+                  !_isScanning ? "Waiting for scan" : _progress == 0 ? "Estimating Scan Size" : "Analyzing: $_currentScanPath",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 12
