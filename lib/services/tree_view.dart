@@ -48,14 +48,24 @@ class TreeView {
     }
   }
 
-  void sortChildrenBySize(List<FolderNode> nodes, {bool ascending = false}) {
+  void sortChildren(List<FolderNode> nodes, String sortOption) {
     for (final node in nodes) {
       if (node.children != null) {
-        node.children!.sort((a, b) => ascending
-          ? (a.size ?? 0).compareTo(b.size ?? 0)
-          : (b.size ?? 0).compareTo(a.size ?? 0)
-        );
-        sortChildrenBySize(node.children!, ascending: ascending);
+        node.children!.sort((a, b) {
+          switch (sortOption) {
+            case 'Sort by A-Z':
+              return a.path.toLowerCase().compareTo(b.path.toLowerCase());
+            case 'Sort by Z-A':
+              return b.path.toLowerCase().compareTo(a.path.toLowerCase());
+            case 'Sort by Size asc':
+              return (a.size ?? 0).compareTo((b.size ?? 0));
+            case 'Sort by Size desc':
+              return (b.size ?? 0).compareTo((a.size ?? 0));
+            default:
+              return 0;
+          }
+        });
+        sortChildren(node.children!, sortOption);
       }
     }
   }

@@ -27,8 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isScanning = false;
   int _totalFiles = 0;
   int _scannedFiles = 0;
-  final _sortItems = ['Sort by Size asc', 'Sort by Size desc'];
-  String _sortOption = 'Sort by Size asc';
+  final _sortItems = ['Sort by A-Z', 'Sort by Z-A', 'Sort by Size asc', 'Sort by Size desc'];
+  String _sortOption = 'Sort by A-Z';
 
   @override
   void initState() {
@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _rootNode = disks;
+      _sortTree();
     });
   }
 
@@ -80,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _percent = (_progress * 100).toInt();
       _duration = stopwatch.elapsed;
       _treeView.updateNodeWithScanResult(result, _rootNode);
+      _sortTree();
       _isScanning = false;
     });
     debugPrint("Path: ${result.path} Size: ${result.size} Duration: ${stopwatch.elapsed}");
@@ -131,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final children = await _treeView.getChildren(dir);
             setState(() {
               node.children = children;
+              _sortTree();
             });
           }
         },
@@ -146,8 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _sortTree() {
-    final bool ascending = _sortOption.contains('asc');
-    _treeView.sortChildrenBySize(_rootNode, ascending: ascending);
+    _treeView.sortChildren(_rootNode, _sortOption);
   }
 
   @override
@@ -261,9 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: _rootNode.length,
-                itemBuilder: (context, index) => _buildFolderNode(_rootNode[index]),
+              child: ListView(
+                children: _rootNode.map((node) => _buildFolderNode(node)).toList(),
               )
             ),
           ],
