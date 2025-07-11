@@ -47,4 +47,16 @@ class TreeView {
       }
     }
   }
+
+  void sortChildrenBySize(List<FolderNode> nodes, {bool ascending = false}) {
+    for (final node in nodes) {
+      if (node.children != null) {
+        node.children!.sort((a, b) => ascending
+          ? (a.size ?? 0).compareTo(b.size ?? 0)
+          : (b.size ?? 0).compareTo(a.size ?? 0)
+        );
+        sortChildrenBySize(node.children!, ascending: ascending);
+      }
+    }
+  }
 }

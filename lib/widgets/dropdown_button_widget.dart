@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 
 class DropdownButtonWidget extends StatefulWidget {
   final List<String> items;
+  final String selectedItem;
+  final ValueChanged<String?>? onChanged;
 
   const DropdownButtonWidget({
     super.key, 
-    required this.items
+    required this.items,
+    required this.selectedItem,
+    this.onChanged,
   });
   
   @override
@@ -15,8 +19,6 @@ class DropdownButtonWidget extends StatefulWidget {
 typedef MenuEntry = DropdownMenuEntry<String>;
 
 class _DropdownButtonWidgetState extends State<DropdownButtonWidget> {
-  late String dropdownValue = widget.items.first;
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -26,7 +28,7 @@ class _DropdownButtonWidgetState extends State<DropdownButtonWidget> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-        value: dropdownValue,
+        value: widget.selectedItem,
           items: widget.items
             .map((name) => DropdownMenuItem<String>(
               value: name, 
@@ -39,11 +41,7 @@ class _DropdownButtonWidgetState extends State<DropdownButtonWidget> {
               ), 
             ))
             .toList(), 
-          onChanged: (String? value) { 
-            setState(() {
-              dropdownValue = value!;
-            });
-          },
+          onChanged: widget.onChanged,
           isDense: true,
           dropdownColor: Color(0xFFf0f2f5),
           borderRadius: BorderRadius.circular(24),

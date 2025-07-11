@@ -27,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isScanning = false;
   int _totalFiles = 0;
   int _scannedFiles = 0;
+  final _sortItems = ['Sort by Size asc', 'Sort by Size desc'];
+  String _sortOption = 'Sort by Size asc';
 
   @override
   void initState() {
@@ -143,6 +145,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return path.split(Platform.pathSeparator).last;
   }
 
+  void _sortTree() {
+    final bool ascending = _sortOption.contains('asc');
+    _treeView.sortChildrenBySize(_rootNode, ascending: ascending);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -205,7 +212,16 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               spacing: 8,
               children: [
-                DropdownButtonWidget(items: ['Sort by Size asc', 'Sort by Size desc']),
+                DropdownButtonWidget(
+                  items: _sortItems,
+                  selectedItem: _sortOption,
+                  onChanged: (value) {
+                    setState(() {
+                      _sortOption = value!;
+                      _sortTree();
+                    });
+                  },
+                ),
               ],
             ),
             Column(
